@@ -1,0 +1,12 @@
+{
+  "name": "p2p-live",
+  "version": "1.0.0",
+  "description": "Minimal IPv6 personal live streaming server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "node-media-server": "^2.7.4"
+  }
+}

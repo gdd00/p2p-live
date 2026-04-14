@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live</title>
+  <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #videoPlayer {
+      width: 80vw;
+      max-height: 100vh;
+      outline: none;
+      background: #000;
+    }
+    #status {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-family: monospace;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 16px;
+      border-radius: 4px;
+      display: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+<video id="videoPlayer" controls muted autoplay playsinline></video>
+<div id="status"></div>
+
+<script>
+(function () {
+  var video = document.getElementById('videoPlayer');
+  var statusEl = document.getElementById('status');
+
+  // 检查 mpegts.js 是否加载成功
+  if (!window.mpegts) {
+    showStatus('mpegts.js 加载失败，请检查网络连接');
+    return;
+  }
+
+  // 确认浏览器支持 MSE（Media Source Extensions）
+  if (!mpegts.getFeatureList().mseLivePlayback) {
+    showStatus('当前浏览器不支持 MSE，无法播放 FLV 流');
+    return;
+  }
+
+  // 动态构建 FLV 拉流地址
+  // 从当前页面 URL 获取协议 + host，拼接流地址
+  var streamUrl =
+    window.location.protocol + '//' + window.location.host + '/live/stream.flv';
+
+  // 创建播放器实例
+  var player = mpegts.createPlayer({
+    type: 'flv',
+    url: streamUrl,
+    isLive: true,
+  });
+
+  player.attachMediaElement(video);
+  player.load();
+
+  var retryTimer = null;
+  var MAX_RETRIES = 10;       // 最大重试次数
+  var RETRY_INTERVAL = 5000;  // 重试间隔（毫秒）
+
+  function showStatus(msg) {
+    statusEl.textContent = msg;
+    statusEl.style.display = 'block';
+  }
+
+  function hideStatus() {
+    statusEl.style.display = 'none';
+  }
+
+  // 播放失败时自动重试
+  player.on(mpegts.Events.ERROR, function (eventType, detail) {
+    console.warn('[mpegts] 错误:', eventType, detail);
+
+    if (player) {
+      player.pause();
+      player.unload();
+      player.destroy();
+      player = null;
+    }
+
+    if (MAX_RETRIES > 0) {
+      MAX_RETRIES--;
+      showStatus('直播未开始，将在 ' + (RETRY_INTERVAL / 1000) + ' 秒后重连... (剩余 ' + MAX_RETRIES + ' 次)');
+      retryTimer = setTimeout(createPlayer, RETRY_INTERVAL);
+    } else {
+      showStatus('无法连接到直播流，请确认推流已开启');
+    }
+  });
+
+  function createPlayer() {
+    if (!window.mpegts || !mpegts.getFeatureList().mseLivePlayback) return;
+
+    player = mpegts.createPlayer({
+      type: 'flv',
+      url: streamUrl,
+      isLive: true,
+    });
+
+    player.attachMediaElement(video);
+    player.load();
+    player.play().catch(function () {});
+    hideStatus();
+
+    // 重新绑定错误监听
+    player.on(mpegts.Events.ERROR, function (eventType, detail) {
+      console.warn('[mpegts] 错误:', eventType, detail);
+
+      if (player) {
+        player.pause();
+        player.unload();
+        player.destroy();
+        player = null;
+      }
+
+      if (MAX_RETRIES > 0) {
+        MAX_RETRIES--;
+        showStatus('直播未开始，将在 ' + (RETRY_INTERVAL / 1000) + ' 秒后重连... (剩余 ' + MAX_RETRIES + ' 次)');
+        retryTimer = setTimeout(createPlayer, RETRY_INTERVAL);
+      } else {
+        showStatus('无法连接到直播流，请确认推流已开启');
+      }
+    });
+  }
+
+  // 首次尝试播放
+  player.play().catch(function () {});
+
+  // 页面卸载时清理播放器
+  window.addEventListener('beforeunload', function () {
+    clearTimeout(retryTimer);
+    if (player) {
+      player.pause();
+      player.unload();
+      player.destroy();
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

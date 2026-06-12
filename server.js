@@ -56,9 +56,9 @@ setTimeout(() => {
   console.log('========================================');
   console.log(`  本机 IPv6 地址: ${ipv6}`);
   console.log('');
-  console.log('  [推流] OBS 推流地址:');
-  console.log(`     rtmp://[${ipv6}]:1935/live/stream`);
-  console.log('');
+  console.log('  [推流] OBS 设置:');
+  console.log(`     服务器(Server): rtmp://[${ipv6}]:1935/live`);
+  console.log('     推流码(Stream Key): stream');
   console.log('  [观看] 观众播放地址:');
   console.log(`     http://[${ipv6}]:8000/`);
   console.log('========================================');

@@ -1,0 +1,304 @@
+diff --git a/node_modules/node-media-server/.dockerignore b/node_modules/node-media-server/.dockerignore
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/.eslintrc.js b/node_modules/node-media-server/.eslintrc.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/.github/FUNDING.yml b/node_modules/node-media-server/.github/FUNDING.yml
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/.github/workflows/docker-image.yml b/node_modules/node-media-server/.github/workflows/docker-image.yml
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/.github/workflows/npm.yml b/node_modules/node-media-server/.github/workflows/npm.yml
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/Dockerfile b/node_modules/node-media-server/Dockerfile
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/LICENSE b/node_modules/node-media-server/LICENSE
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/README.md b/node_modules/node-media-server/README.md
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/bin/cert.pem b/node_modules/node-media-server/bin/cert.pem
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/bin/key.pem b/node_modules/node-media-server/bin/key.pem
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/api/controllers/relay.js b/node_modules/node-media-server/src/api/controllers/relay.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/api/controllers/server.js b/node_modules/node-media-server/src/api/controllers/server.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/api/controllers/streams.js b/node_modules/node-media-server/src/api/controllers/streams.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/api/routes/relay.js b/node_modules/node-media-server/src/api/routes/relay.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/api/routes/server.js b/node_modules/node-media-server/src/api/routes/server.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/api/routes/streams.js b/node_modules/node-media-server/src/api/routes/streams.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_core_amf.js b/node_modules/node-media-server/src/node_core_amf.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_core_av.js b/node_modules/node-media-server/src/node_core_av.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_core_bitop.js b/node_modules/node-media-server/src/node_core_bitop.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_core_ctx.js b/node_modules/node-media-server/src/node_core_ctx.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_core_logger.js b/node_modules/node-media-server/src/node_core_logger.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_core_utils.js b/node_modules/node-media-server/src/node_core_utils.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_fission_server.js b/node_modules/node-media-server/src/node_fission_server.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_fission_session.js b/node_modules/node-media-server/src/node_fission_session.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_flv_session.js b/node_modules/node-media-server/src/node_flv_session.js
+old mode 100644
+new mode 100755
+index e6ccdf1..ca80b0a
+--- a/node_modules/node-media-server/src/node_flv_session.js
++++ b/node_modules/node-media-server/src/node_flv_session.js
+@@ -168,7 +168,7 @@ class NodeFlvSession {
+     }
+ 
+     //send avcSequenceHeader
+-    if (publisher.videoCodec == 7 || publisher.videoCodec == 12) {
++    if (publisher.videoCodec == 7 || publisher.videoCodec == 12 || publisher.videoCodec == 13) {
+       let packet = FlvPacket.create(publisher.avcSequenceHeader, 9);
+       let tag = NodeFlvSession.createFlvTag(packet);
+       this.res.write(tag);
+diff --git a/node_modules/node-media-server/src/node_http_server.js b/node_modules/node-media-server/src/node_http_server.js
+old mode 100644
+new mode 100755
+index b180006..4e4bc43
+--- a/node_modules/node-media-server/src/node_http_server.js
++++ b/node_modules/node-media-server/src/node_http_server.js
+@@ -63,6 +63,53 @@ class NodeHttpServer {
+       app.use('/api/streams', streamsRoute(context));
+       app.use('/api/server', serverRoute(context));
+       app.use('/api/relay', relayRoute(context));
++      app.get('/api/live/status', (req, res) => {
++        const streamPath = typeof req.query.stream === 'string' ? req.query.stream : '/live/stream';
++        const playheadMs = Number(req.query.playheadMs);
++        const hasPlayhead = Number.isFinite(playheadMs);
++        const state = context.liveStreams && context.liveStreams.get(streamPath);
++        const now = Date.now();
++
++        if (!state) {
++          res.json({
++            ok: false,
++            streamPath,
++            now,
++            active: false,
++            message: 'stream not found',
++          });
++          return;
++        }
++
++        const liveEdgeClockMs = state.lastFrameClock ?? state.lastVideoClock;
++        const liveEdgeObservedAt = state.lastFrameAt ?? state.lastVideoAt;
++        let estimatedFrameAt = null;
++        let delayMs = null;
++
++        if (hasPlayhead && liveEdgeClockMs != null && liveEdgeObservedAt != null) {
++          const lagMs = Math.max(0, liveEdgeClockMs - playheadMs);
++          estimatedFrameAt = liveEdgeObservedAt - lagMs;
++          delayMs = Math.max(0, now - estimatedFrameAt);
++        }
++
++        res.json({
++          ok: true,
++          streamPath,
++          active: !!state.active,
++          now,
++          publishedAt: state.publishedAt ?? null,
++          endedAt: state.endedAt ?? null,
++          lastVideoClock: state.lastVideoClock ?? null,
++          lastVideoAt: state.lastVideoAt ?? null,
++          lastFrameClock: state.lastFrameClock ?? null,
++          lastFrameAt: state.lastFrameAt ?? null,
++          liveEdgeClockMs,
++          liveEdgeObservedAt,
++          playheadMs: hasPlayhead ? playheadMs : null,
++          estimatedFrameAt,
++          delayMs,
++        });
++      });
+     }
+ 
+     app.use(Express.static(path.join(__dirname + '/public')));
+@@ -87,7 +134,8 @@ class NodeHttpServer {
+   }
+ 
+   run() {
+-    this.httpServer.listen(this.port, () => {
++    // 绑定到 IPv6 全零地址，在双栈系统上同时兼容 IPv4
++    this.httpServer.listen(this.port, '::', () => {
+       Logger.log(`Node Media Http Server started on port: ${this.port}`);
+     });
+ 
+diff --git a/node_modules/node-media-server/src/node_media_server.js b/node_modules/node-media-server/src/node_media_server.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_relay_server.js b/node_modules/node-media-server/src/node_relay_server.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_relay_session.js b/node_modules/node-media-server/src/node_relay_session.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_rtmp_client.js b/node_modules/node-media-server/src/node_rtmp_client.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_rtmp_handshake.js b/node_modules/node-media-server/src/node_rtmp_handshake.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_rtmp_server.js b/node_modules/node-media-server/src/node_rtmp_server.js
+old mode 100644
+new mode 100755
+index c4f529b..baa5074
+--- a/node_modules/node-media-server/src/node_rtmp_server.js
++++ b/node_modules/node-media-server/src/node_rtmp_server.js
+@@ -41,7 +41,8 @@ class NodeRtmpServer {
+   }
+ 
+   run() {
+-    this.tcpServer.listen(this.port, () => {
++    // 绑定到 IPv6 全零地址，在双栈系统上同时兼容 IPv4
++    this.tcpServer.listen(this.port, '::', () => {
+       Logger.log(`Node Media Rtmp Server started on port: ${this.port}`);
+     });
+ 
+diff --git a/node_modules/node-media-server/src/node_rtmp_session.js b/node_modules/node-media-server/src/node_rtmp_session.js
+old mode 100644
+new mode 100755
+index 74cb068..b2ba172
+--- a/node_modules/node-media-server/src/node_rtmp_session.js
++++ b/node_modules/node-media-server/src/node_rtmp_session.js
+@@ -755,23 +755,10 @@ class NodeRtmpSession {
+         }
+       } else if (FourCC.compare(FourCC_AV1) == 0) {
+         codec_id = 13;
+-        if (packetType == PacketTypeSequenceStart) {
+-          payload[0] = 0x1d;
+-          payload[1] = 0;
+-          payload[2] = 0;
+-          payload[3] = 0;
+-          payload[4] = 0;
+-          // Logger.log("PacketTypeSequenceStart", payload.subarray(0, 16));
+-        } else if (packetType == PacketTypeMPEG2TSSequenceStart) {
+-          // Logger.log("PacketTypeMPEG2TSSequenceStart", payload.subarray(0, 16));
+-        } else if (packetType == PacketTypeCodedFrames) {
+-          // Logger.log("PacketTypeCodedFrames", payload.subarray(0, 16));
+-          payload[0] = frame_type << 4 | 0x0d;
+-          payload[1] = 1;
+-          payload[2] = 0;
+-          payload[3] = 0;
+-          payload[4] = 0;
+-        }
++        // Keep Enhanced FLV format for AV1 (mpegts.js expects ExHeader + FourCC)
++        // payload[0] already has: 0x80 | (frame_type << 4) | packetType
++        // payload[1..4] already has: FourCC 'av01'
++        // No transformation needed — pass through as-is
+       } else {
+         Logger.log(`unsupported extension header`);
+         return;
+@@ -788,7 +775,14 @@ class NodeRtmpSession {
+ 
+     if (codec_id == 7 || codec_id == 12 || codec_id == 13) {
+       //cache avc sequence header
+-      if (frame_type == 1 && payload[1] == 0) {
++      let isSequenceHeader = false;
++      if (codec_id == 13) {
++        // AV1 Enhanced FLV: packetType is in low 4 bits of byte[0]
++        isSequenceHeader = frame_type == 1 && packetType == 0;
++      } else {
++        isSequenceHeader = frame_type == 1 && payload[1] == 0;
++      }
++      if (isSequenceHeader) {
+         this.avcSequenceHeader = Buffer.alloc(payload.length);
+         payload.copy(this.avcSequenceHeader);
+         let info = AV.readAVCSpecificConfig(this.avcSequenceHeader);
+@@ -818,6 +812,13 @@ class NodeRtmpSession {
+     packet.header.timestamp = this.parserPacket.clock;
+     let rtmpChunks = this.rtmpChunksCreate(packet);
+     let flvTag = NodeFlvSession.createFlvTag(packet);
++    context.nodeEvent.emit('streamVideoFrame', {
++      streamPath: this.publishStreamPath,
++      clock: packet.header.timestamp,
++      receivedAt: Date.now(),
++      isKeyFrame: frame_type === 1,
++      isSequenceHeader: codec_id === 13 ? (frame_type === 1 && packetType === 0) : (frame_type === 1 && payload[1] === 0),
++    });
+ 
+     //cache gop
+     if (this.rtmpGopCacheQueue != null) {
+@@ -825,7 +826,8 @@ class NodeRtmpSession {
+         this.rtmpGopCacheQueue.clear();
+         this.flvGopCacheQueue.clear();
+       }
+-      if ((codec_id == 7 || codec_id == 12 || codec_id == 13) && frame_type == 1 && payload[1] == 0) {
++      let isSeqHdr = codec_id === 13 ? (frame_type == 1 && packetType == 0) : ((codec_id == 7 || codec_id == 12) && frame_type == 1 && payload[1] == 0);
++      if (isSeqHdr) {
+         //skip avc sequence header
+       } else {
+         this.rtmpGopCacheQueue.add(rtmpChunks);
+diff --git a/node_modules/node-media-server/src/node_trans_server.js b/node_modules/node-media-server/src/node_trans_server.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/node_trans_session.js b/node_modules/node-media-server/src/node_trans_session.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/admin/index.html b/node_modules/node-media-server/src/public/admin/index.html
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/favicon.ico b/node_modules/node-media-server/src/public/favicon.ico
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/manifest.json b/node_modules/node-media-server/src/public/manifest.json
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/static/css/2.ceb657f8.chunk.css b/node_modules/node-media-server/src/public/static/css/2.ceb657f8.chunk.css
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/static/css/main.a08da4e0.chunk.css b/node_modules/node-media-server/src/public/static/css/main.a08da4e0.chunk.css
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/static/js/2.8cb41161.chunk.js b/node_modules/node-media-server/src/public/static/js/2.8cb41161.chunk.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/static/js/main.4071166f.chunk.js b/node_modules/node-media-server/src/public/static/js/main.4071166f.chunk.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/src/public/static/js/runtime~main.c5541365.js b/node_modules/node-media-server/src/public/static/js/runtime~main.c5541365.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/test/test_api.http b/node_modules/node-media-server/test/test_api.http
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/test/test_genAuth.js b/node_modules/node-media-server/test/test_genAuth.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/test/test_rtmp_client.js b/node_modules/node-media-server/test/test_rtmp_client.js
+old mode 100644
+new mode 100755
+diff --git a/node_modules/node-media-server/test/test_run.js b/node_modules/node-media-server/test/test_run.js
+old mode 100644
+new mode 100755

@@ -3,158 +3,301 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live</title>
+  <title>P2P Direct Live Node</title>
+  
+  <!-- Typography and fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/style.css">
+  
+  <!-- Media streaming engine -->
   <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.8.0/dist/mpegts.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; }
-    html, body {
-      width: 100%; height: 100%;
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #videoPlayer {
-      width: 80vw;
-      max-height: 100vh;
-      outline: none;
-      background: #000;
-    }
-    #status {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #fff;
-      font-family: monospace;
-      font-size: 14px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 8px 16px;
-      border-radius: 4px;
-      display: none;
-      z-index: 10;
-    }
-  </style>
 </head>
 <body>
 
-<video id="videoPlayer" controls muted autoplay playsinline></video>
-<div id="status"></div>
+  <!-- Ambient Glow Background Orbs -->
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
 
-<script>
-(function () {
-  var video = document.getElementById('videoPlayer');
-  var statusEl = document.getElementById('status');
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <div class="logo-container">
+        <div class="logo-icon">P</div>
+        <div>
+          <span class="logo-text">P2P LIVE</span>
+          <span class="logo-tagline">Direct Link</span>
+        </div>
+      </div>
+      <div class="node-badge" id="statusBadge">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">DETECTING</span>
+      </div>
+    </div>
+  </header>
 
-  // 检查 mpegts.js 是否加载成功
-  if (!window.mpegts) {
-    showStatus('mpegts.js 加载失败，请检查网络连接');
-    return;
-  }
+  <!-- Main Grid Layout -->
+  <main>
+    <!-- Left column: Player and Logs -->
+    <section class="stream-container">
+      
+      <!-- Video Viewport -->
+      <div class="video-viewport">
+        <!-- Live status floating pill -->
+        <div class="live-indicator-pill live">
+          <span class="status-dot active"></span>
+          <span class="live-text">LIVE STREAM</span>
+        </div>
 
-  // 确认浏览器支持 MSE（Media Source Extensions）
-  if (!mpegts.getFeatureList().mseLivePlayback) {
-    showStatus('当前浏览器不支持 MSE，无法播放 FLV 流');
-    return;
-  }
+        <video id="videoPlayer" muted autoplay playsinline></video>
+        
+        <!-- Video Overlay Screen -->
+        <div id="videoOverlay" class="video-overlay-state">
+          <div class="cyber-loader">
+            <div class="cyber-loader-ring outer"></div>
+            <div class="cyber-loader-ring inner"></div>
+            <div class="cyber-loader-logo">NMS</div>
+          </div>
+          <div>
+            <div id="overlayText" class="overlay-status-text">Connecting to Live Node...</div>
+            <div id="overlaySubtext" class="overlay-status-subtext">Resolving Stream Endpoint</div>
+          </div>
+        </div>
+      </div>
 
-  // 动态构建 FLV 拉流地址
-  // 从当前页面 URL 获取协议 + host，拼接流地址
-  var streamUrl =
-    window.location.protocol + '//' + window.location.host + '/live/stream.flv';
+      <!-- Quick Control Actions -->
+      <div class="control-bar">
+        <button class="btn btn-primary" id="btnPlay">
+          <!-- Pause Icon -->
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+          Pause
+        </button>
+        <button class="btn" id="btnMute">
+          <!-- Muted Icon -->
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM19 12c0 3.28-2.16 6.07-5.14 7.03v2.06c3.97-.93 7-4.5 7-8.77s-3.03-7.84-7-8.77v2.06c2.98.96 5.14 3.75 5.14 7.03zM3 9v6h4l5 5V4L7 9H3z"/>
+          </svg>
+          Muted
+        </button>
+        <button class="btn" id="btnPip">
+          <!-- PiP Icon -->
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98V5c0-1.1-.9-2-2-2zm0 16.01H3V4.98h18v14.03z"/>
+          </svg>
+          PiP Mode
+        </button>
+        <button class="btn" id="btnReconnect" style="margin-left: auto;">
+          <!-- Refresh Icon -->
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+          Reconnect
+        </button>
+      </div>
 
-  // 创建播放器实例
-  var player = mpegts.createPlayer({
-    type: 'flv',
-    url: streamUrl,
-    isLive: true,
-  });
+      <!-- Tech Diagnostics Terminal console -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg class="svg-icon" viewBox="0 0 24 24" style="margin-right: 0.25rem;">
+              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 12H5v-2h6v2zm4-4H5v-2h10v2zm4-4H5V6h14v2z"/>
+            </svg>
+            System Logs
+          </h2>
+          <span style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted);">LIVE OUTPUT</span>
+        </div>
+        <div class="terminal-console" id="console">
+          <!-- Script fills logs here -->
+        </div>
+      </div>
 
-  player.attachMediaElement(video);
-  player.load();
+    </section>
 
-  var retryTimer = null;
-  var MAX_RETRIES = 10;       // 最大重试次数
-  var RETRY_INTERVAL = 5000;  // 重试间隔（毫秒）
+    <!-- Right column: Info, Stats, Guide -->
+    <aside class="dashboard-sidebar">
+      
+      <!-- Diagnostic Dashboard -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 6h-4v2h4v2h-4v2h4v2H9V7h6v2z"/>
+            </svg>
+            Diagnostics
+          </h2>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Resolution</span>
+            <span class="stat-value" id="statResolution">--</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Framerate</span>
+            <span class="stat-value" id="statFps">--</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Bitrate</span>
+            <span class="stat-value highlight" id="statBitrate">--</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Node Status</span>
+            <span class="stat-value" id="statStatus" style="font-size: 0.95rem;">Offline</span>
+          </div>
+        </div>
+        <div class="stat-card" style="margin-top: 1rem;">
+          <span class="stat-label">Est. Direct Latency</span>
+          <span class="stat-value highlight" id="statLatency" style="color: var(--accent-purple); text-shadow: 0 0 8px var(--accent-purple-glow);">--</span>
+        </div>
+      </div>
 
-  function showStatus(msg) {
-    statusEl.textContent = msg;
-    statusEl.style.display = 'block';
-  }
+      <!-- Config & Links Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+              <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+            </svg>
+            Share Node
+          </h2>
+        </div>
+        
+        <div class="info-field-wrapper">
+          <div class="info-label">Web client URL (IPv6/Local)</div>
+          <div class="copy-input-group">
+            <input type="text" readonly class="copy-input" id="streamUrlInput" value="">
+            <button class="btn btn-icon-only" id="btnCopyWeb" title="Copy link">
+              <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
 
-  function hideStatus() {
-    statusEl.style.display = 'none';
-  }
+        <div class="info-field-wrapper">
+          <div class="info-label">RTMP 推流地址</div>
+          <div class="copy-input-group">
+            <input type="text" readonly class="copy-input" id="rtmpUrlInput" value="">
+            <button class="btn btn-icon-only" id="btnCopyRtmp" title="Copy RTMP link">
+              <svg class="svg-icon" viewBox="0 0 24 24">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
 
-  // 播放失败时自动重试
-  player.on(mpegts.Events.ERROR, function (eventType, detail) {
-    console.warn('[mpegts] 错误:', eventType, detail);
+      <!-- OBS Streaming Setup Guide -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg class="svg-icon" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm0-4h-2V7h2v7z"/>
+            </svg>
+            Setup Guide
+          </h2>
+        </div>
 
-    if (player) {
-      player.pause();
-      player.unload();
-      player.destroy();
-      player = null;
-    }
+        <div class="guide-accordion">
+          <!-- Accordion 1: OBS 推流 -->
+          <div class="guide-item open">
+            <button class="guide-header">
+              <span>1. OBS 推流设置</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div class="guide-content">
+              <div class="guide-steps">
+                <div class="guide-step">
+                  <span class="step-num">推流服务器 (Server)</span>
+                  <div class="code-snippet">
+                    <span id="rtmpGuideText">rtmp://[IPv6_Address]:1935/live</span>
+                  </div>
+                </div>
+                <div class="guide-step">
+                  <span class="step-num">串流密钥 (Stream Key)</span>
+                  <div class="code-snippet">
+                    <span>stream</span>
+                  </div>
+                </div>
+                <div class="guide-step">
+                  <span>打开 OBS > 设置 > 推流，类型选择 "自定义..."，输入上述地址。</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-    if (MAX_RETRIES > 0) {
-      MAX_RETRIES--;
-      showStatus('直播未开始，将在 ' + (RETRY_INTERVAL / 1000) + ' 秒后重连... (剩余 ' + MAX_RETRIES + ' 次)');
-      retryTimer = setTimeout(createPlayer, RETRY_INTERVAL);
-    } else {
-      showStatus('无法连接到直播流，请确认推流已开启');
-    }
-  });
+          <!-- Accordion 2: 视频编码要求 -->
+          <div class="guide-item">
+            <button class="guide-header">
+              <span>2. 视频编码要求 (FLV)</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div class="guide-content">
+              <table class="guide-table">
+                <thead>
+                  <tr>
+                    <th>设置项</th>
+                    <th>推荐值</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>视频编码器</td>
+                    <td>H.264 / x264 (不可用 H.265/AV1)</td>
+                  </tr>
+                  <tr>
+                    <td>音频编码器</td>
+                    <td>AAC</td>
+                  </tr>
+                  <tr>
+                    <td>关键帧间隔</td>
+                    <td><strong>2 秒</strong> (非常重要)</td>
+                  </tr>
+                  <tr>
+                    <td>视频码率</td>
+                    <td>2000 - 4000 Kbps</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-  function createPlayer() {
-    if (!window.mpegts || !mpegts.getFeatureList().mseLivePlayback) return;
+          <!-- Accordion 3: 常见问题与防火墙 -->
+          <div class="guide-item">
+            <button class="guide-header">
+              <span>3. 路由器 & 防火墙</span>
+              <span class="arrow">▼</span>
+            </button>
+            <div class="guide-content">
+              <div class="guide-steps">
+                <div class="guide-step">
+                  <span class="step-num">放行端口</span>
+                  <span>需要放行 TCP 1935 (推流) 和 TCP 8000 (播放端口)。</span>
+                </div>
+                <div class="guide-step">
+                  <span class="step-num">IPv6 防火墙</span>
+                  <span>IPv6 直连无 NAT，但需要进入家用路由器后台关闭 "IPv6 SPI 防火墙" 或添加入站放行规则。</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    player = mpegts.createPlayer({
-      type: 'flv',
-      url: streamUrl,
-      isLive: true,
-    });
+    </aside>
+  </main>
 
-    player.attachMediaElement(video);
-    player.load();
-    player.play().catch(function () {});
-    hideStatus();
+  <!-- Footer -->
+  <footer>
+    <div>P2P LIVE STREAMING NODE // RUNNING ON NODE-MEDIA-SERVER v2.7.4</div>
+    <div style="margin-top: 0.25rem; opacity: 0.6;">DIRECT IP BROADCAST · LOW LATENCY MSE FLV</div>
+  </footer>
 
-    // 重新绑定错误监听
-    player.on(mpegts.Events.ERROR, function (eventType, detail) {
-      console.warn('[mpegts] 错误:', eventType, detail);
-
-      if (player) {
-        player.pause();
-        player.unload();
-        player.destroy();
-        player = null;
-      }
-
-      if (MAX_RETRIES > 0) {
-        MAX_RETRIES--;
-        showStatus('直播未开始，将在 ' + (RETRY_INTERVAL / 1000) + ' 秒后重连... (剩余 ' + MAX_RETRIES + ' 次)');
-        retryTimer = setTimeout(createPlayer, RETRY_INTERVAL);
-      } else {
-        showStatus('无法连接到直播流，请确认推流已开启');
-      }
-    });
-  }
-
-  // 首次尝试播放
-  player.play().catch(function () {});
-
-  // 页面卸载时清理播放器
-  window.addEventListener('beforeunload', function () {
-    clearTimeout(retryTimer);
-    if (player) {
-      player.pause();
-      player.unload();
-      player.destroy();
-    }
-  });
-})();
-</script>
-
+  <!-- Core App Logic -->
+  <script src="/app.js"></script>
 </body>
 </html>
